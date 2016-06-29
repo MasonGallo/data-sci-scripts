@@ -19,11 +19,6 @@ sudo R CMD javareconf
 echo -e "\nlocal({r <- getOption('repos')\nr['CRAN'] <- 'https://cran.rstudio.com'\noptions(repos=r)\n})" >> ~/.Rprofile
 
 # get RStudio
-cd Downloads/
-rm *.*
-wget http://www.rstudio.org/download/latest/stable/server/ubuntu64/rstudio-server-latest-amd64.deb
 sudo apt-get -y install gdebi-core
-ls | xargs sudo gdebi -n
-rm *.deb
-
-
+wget -O /tmp/rstudio-server-latest-amd64.deb http://www.rstudio.org/download/latest/stable/server/ubuntu64/rstudio-server-latest-amd64.deb
+sudo gdebi -n /tmp/rstudio-server-latest-amd64.deb
