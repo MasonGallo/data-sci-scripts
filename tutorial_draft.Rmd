@@ -1,44 +1,49 @@
-tutorial\_draft
-================
+---
+title: "tutorial_draft"
+output: github_document
+---
 
-Evaluating Hyperparameter Tuning
-================================
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mlr)
+```
+
+# Evaluating Hyperparameter Tuning
 
 As mentioned in the Tuning tutorial, tuning a machine learning algorithm typically involves:
 
--   the hyperparameter search space:
+* the hyperparameter search space:
 
-``` r
+```{r search_space, message = FALSE, warning = FALSE}
 # ex: create a search space for the C hyperparameter from 0.01 to 0.1
 ps = makeParamSet(
   makeNumericParam("C", lower = 0.01, upper = 0.1)
 )
 ```
 
--   the optimization algorithm:
+* the optimization algorithm:
 
-``` r
+```{r opt_algo, message = FALSE, warning = FALSE}
 # ex: random search with 100 iterations
 ctrl = makeTuneControlRandom(maxit = 100L)
 ```
 
--   an evaluation method, i.e., a resampling strategy and a performance measure:
+* an evaluation method, i.e., a resampling strategy and a performance measure:
 
-``` r
+```{r eval_method, message = FALSE, warning = FALSE}
 # ex: 2-fold CV
 rdesc = makeResampleDesc("CV", iters = 2L)
 ```
 
 After tuning, you may want to evaluate the tuning process in order to answer questions such as:
 
--   How does varying the value of a hyperparameter change the performance of the machine learning algorithm?
--   What's the relative importance of each hyperparameter?
--   How did the optimization algorithm (prematurely) converge?
+* How does varying the value of a hyperparameter change the performance of the machine learning algorithm?
+* What's the relative importance of each hyperparameter?
+* How did the optimization algorithm (prematurely) converge?
 
 mlr provides methods to generate and plot the data in order to evaluate the effect of hyperparameter tuning
 
-Generating hyperparameter tuning data
--------------------------------------
+## Generating hyperparameter tuning data
 
 mlr separates the generation of the data from the plotting of the data in case the user wishes to use the data in a custom way downstream.
 
@@ -46,7 +51,7 @@ The `generateHyperParsEffectData` method takes the tuning result along with 2 ad
 
 In the example below, we perform random search on the C parameter for SVM on the famous Pima Indians dataset. We generate the hyperparameter effect data so that the C parameter is on the transformed scale and we do not include diagnostic data.
 
-``` r
+```{r gen_data, message = FALSE, warning = FALSE}
 ps = makeParamSet(
   makeNumericParam("C", lower = -5, upper = 5, trafo = function(x) 2^x)
 )
@@ -58,23 +63,9 @@ res = tuneParams("classif.ksvm", task = pid.task, control = ctrl,
 generateHyperParsEffectData(res, trafo = T, include.diagnostics = F)
 ```
 
-    ## HyperParsEffectData:
-    ## Hyperparameters: C
-    ## Measures: acc.test.mean,mmce.test.mean
-    ## Optimizer: TuneControlRandom
-    ## Nested CV Used: FALSE
-    ## Snapshot of $data:
-    ##            C acc.test.mean mmce.test.mean iteration exec.time
-    ## 1 12.2957110     0.7395833      0.2604167         1     0.052
-    ## 2  0.0758711     0.6666667      0.3333333         2     0.036
-    ## 3  2.2934909     0.7526042      0.2473958         3     0.036
-    ## 4  0.3146606     0.7500000      0.2500000         4     0.036
-    ## 5 15.8976559     0.7513021      0.2486979         5     0.039
-    ## 6  2.1371078     0.7539062      0.2460938         6     0.038
-
 In the example below, we perform grid search on the C parameter for SVM on the famous Pima Indians dataset using nested cross validation. We generate the hyperparameter effect data so that the C parameter is on the untransformed scale and we do not include diagnostic data. As you can see below, nested cross validation is supported without any extra work by the user, allowing the user to obtain an unbiased estimator for the performance.
 
-``` r
+```{r gen_nested, message = FALSE, warning = FALSE}
 ps = makeParamSet(
   makeNumericParam("C", lower = -5, upper = 5, trafo = function(x) 2^x)
 )
@@ -87,37 +78,16 @@ res = resample(lrn, task = pid.task, resampling = cv2, extract = getTuneResult)
 generateHyperParsEffectData(res)
 ```
 
-    ## HyperParsEffectData:
-    ## Hyperparameters: C
-    ## Measures: acc.test.mean,mmce.test.mean
-    ## Optimizer: TuneControlGrid
-    ## Nested CV Used: TRUE
-    ## Snapshot of $data:
-    ##            C acc.test.mean mmce.test.mean iteration exec.time
-    ## 1 -5.0000000     0.6250000      0.3750000         1     0.026
-    ## 2 -3.8888889     0.6250000      0.3750000         2     0.027
-    ## 3 -2.7777778     0.6692708      0.3307292         3     0.025
-    ## 4 -1.6666667     0.7447917      0.2552083         4     0.026
-    ## 5 -0.5555556     0.7526042      0.2473958         5     0.025
-    ## 6  0.5555556     0.7421875      0.2578125         6     0.024
-    ##   nested_cv_run
-    ## 1             1
-    ## 2             1
-    ## 3             1
-    ## 4             1
-    ## 5             1
-    ## 6             1
-
 After generating the hyperparameter effect data, the next step is to visualize it. mlr has several methods built-in to visualize the data, meant to support the needs of the researcher and the engineer in industry. The next few sections will walk through the visualization support for several usecases.
 
-Visualizing the effect of a single hyperparameter
--------------------------------------------------
+## Visualizing the effect of a single hyperparameter
 
 In a situation when the user is tuning a single hyperparameter for a learner, the user may wish to plot the performance of the learner against the values of the hyperparameter.
 
-In the example below, we tune the number of clusters against the silhouette score on the Pima dataset. We specify the x-axis with the x arg and the y-axis with the y arg. If the plot.type arg is not specified, mlr will attempt to plot a scatterplot by default. Since `plotHyperParsEffect` returns a `ggplot2` object, we can easily customize it to our liking!
+In the example below, we tune the number of clusters against the silhouette
+score on the Pima dataset. We specify the x-axis with the x arg and the y-axis with the y arg. If the plot.type arg is not specified, mlr will attempt to plot a scatterplot by default. Since `plotHyperParsEffect` returns a `ggplot2` object, we can easily customize it to our liking!
 
-``` r
+```{r cluster, message = FALSE, warning = FALSE}
 ps = makeParamSet(
   makeDiscreteParam("centers", values = 3:10)
 )
@@ -135,11 +105,9 @@ plt + geom_point(colour = "red") +
   theme_bw()
 ```
 
-![](tutorial_draft_files/figure-markdown_github/cluster-1.png)
-
 In the example below, we tune SVM with the C hyperparameter on the Pima dataset. We will use simulated annealing optimizer, so we are interested in seeing if the optimization algorithm actually improves with iterations. By default, mlr only plots improvements to the global optimum.
 
-``` r
+```{r sa_single, message = FALSE, warning = FALSE}
 ps = makeParamSet(
   makeNumericParam("C", lower = -5, upper = 5, trafo = function(x) 2^x)
 )
@@ -154,11 +122,9 @@ plt + ggtitle("Analyzing convergence of simulated annealing") +
   theme_minimal()
 ```
 
-![](tutorial_draft_files/figure-markdown_github/sa_single-1.png)
-
 In the case of a learner crash, mlr will impute the crash with the worst value graphically and indicate the point. In the example below, we give the C parameter negative values, which will result in a learner crash for SVM.
 
-``` r
+```{r single_crash, message = FALSE, warning = FALSE}
 ps = makeParamSet(
   makeDiscreteParam("C", values = c(-1, -0.5, 0.5, 1, 1.5))
 )
@@ -173,11 +139,9 @@ plt + ggtitle("SVM learner crashes with negative C") +
   theme_bw()
 ```
 
-![](tutorial_draft_files/figure-markdown_github/single_crash-1.png)
-
 The example below uses nested cross validation with an outer loop of 2 runs. mlr indicates each run within the visualization.
 
-``` r
+```{r single_nested, message = FALSE, warning = FALSE}
 ps = makeParamSet(
   makeNumericParam("C", lower = -5, upper = 5, trafo = function(x) 2^x)
 )
@@ -192,16 +156,13 @@ plotHyperParsEffect(data, x = "C", y = "acc.test.mean",
                plot.type = "line")
 ```
 
-![](tutorial_draft_files/figure-markdown_github/single_nested-1.png)
-
-Visualizing the effect of 2 hyperparameters
--------------------------------------------
+## Visualizing the effect of 2 hyperparameters
 
 In the case of tuning 2 hyperparameters simultaneously, mlr provides the ability to plot a heatmap and contour plot in addition to a scatterplot or line.
 
 In the example below, we tune the C and sigma parameters for SVM on the Pima dataset. We use interpolation to produce a regular grid for plotting the heatmap. The interpolation arg accepts any regression learner from mlr to perform the interpolation. The z arg will be used to fill the heatmap or color lines, depending on the `plot.type` used.
 
-``` r
+```{r two, message = FALSE, warning = FALSE}
 ps = makeParamSet(
   makeNumericParam("C", lower = -5, upper = 5, trafo = function(x) 2^x),
   makeNumericParam("sigma", lower = -5, upper = 5, trafo = function(x) 2^x))
@@ -221,11 +182,9 @@ plt + scale_fill_gradient2(breaks = seq(min_plt, max_plt, length.out = 5),
                            midpoint = med_plt)
 ```
 
-![](tutorial_draft_files/figure-markdown_github/two-1.png)
-
 We can use the show.experiments arg in order to visualize which points were specifically passed to the learner in the original experiment and which points were interpolated by mlr:
 
-``` r
+```{r two_showargs, message = FALSE, warning = FALSE}
 plt = plotHyperParsEffect(data, x = "C", y = "sigma", z = "acc.test.mean",
                     plot.type = "heatmap", interpolate = "regr.earth", 
                     show.experiments = TRUE)
@@ -234,20 +193,16 @@ plt + scale_fill_gradient2(breaks = seq(min_plt, max_plt, length.out = 5),
                            midpoint = med_plt)
 ```
 
-![](tutorial_draft_files/figure-markdown_github/two_showargs-1.png)
-
 We can also visualize how long the optimizer takes to reach an optima for the same example:
 
-``` r
+```{r two_optima, message = FALSE, warning = FALSE}
 plotHyperParsEffect(data, x = "iteration", y = "acc.test.mean", 
                     plot.type = "line")
 ```
 
-![](tutorial_draft_files/figure-markdown_github/two_optima-1.png)
-
 In the case where we are tuning 2 hyperparameters and we have a learner crash, mlr will indicate the respective points and impute them with the worst value. In the example below, we tune C and sigma, forcing C to be negative for some instances which will crash SVM. We perform interpolation to get a regular grid in order to plot a heatmap. We can see that the interpolation creates axis parallel lines resulting from the learner crashes.
 
-``` r
+```{r two_crash, message = FALSE, warning = FALSE}
 ps = makeParamSet(
   makeDiscreteParam("C", values = c(-1, 0.5, 1.5, 1, 0.2, 0.3, 0.4, 5)),
   makeDiscreteParam("sigma", values = c(-1, 0.5, 1.5, 1, 0.2, 0.3, 0.4, 5)))
@@ -261,11 +216,9 @@ plotHyperParsEffect(data, x = "C", y = "sigma", z = "acc.test.mean",
                     plot.type = "heatmap", interpolate = "regr.earth")
 ```
 
-![](tutorial_draft_files/figure-markdown_github/two_crash-1.png)
-
 A slightly more complicated example is using nested cross validation while simultaneously tuning 2 hyperparameters. In order to plot a heatmap in this case, mlr will aggregate each of the nested runs by a user-specified function. The default function is mean. As expected, we can still take advantage of interpolation.
 
-``` r
+```{r two_nested, message = FALSE, warning = FALSE}
 ps = makeParamSet(
   makeNumericParam("C", lower = -5, upper = 5, trafo = function(x) 2^x),
   makeNumericParam("sigma", lower = -5, upper = 5, trafo = function(x) 2^x))
@@ -288,16 +241,14 @@ plt + scale_fill_gradient2(breaks = seq(min_plt, max_plt, length.out = 5),
                            midpoint = med_plt)
 ```
 
-![](tutorial_draft_files/figure-markdown_github/two_nested-1.png)
 
-Visualizing the effect of more than 2 hyperparameters
------------------------------------------------------
+## Visualizing the effect of more than 2 hyperparameters
 
 In the case of 2+ hyperparameters, the researcher may want to understand the relative importance of each hyperparameter or how each hyperparameter contributes to performance. By converting the hyperparameter effects data to a regression task, we can compute partial dependency and relative importance!
 
 In the example below, we tune SVM with poly kernel and 3 hyperparameters: C, offset, degree.
 
-``` r
+```{r partial_dep, message = FALSE, warning = FALSE}
 ps = makeParamSet(
   makeNumericParam("C", lower = -5, upper = 5, trafo = function(x) 2^x),
   makeNumericParam("sigma", lower = -5, upper = 5, trafo = function(x) 2^x))
@@ -311,26 +262,25 @@ data = generateHyperParsEffectData(res)
 
 Now that we've generated the data, we convert to a regression task.
 
-``` r
+```{r create_task, message = FALSE, warning = FALSE}
 data.task = data$data[, c(data$hyperparams, data$measures)]
 data.task = makeRegrTask(id = "more_2", data = data.task, target = data$measures[1])
 ```
 
 Now that we have a regression task, we can compute feature importance with information gain and chi squared!
 
-``` r
+```{r feat_sel, message = FALSE, warning = FALSE}
 fv2 = generateFilterValuesData(data.task, method = c("information.gain", "chi.squared"))
 plotFilterValues(fv2)
 ```
 
-![](tutorial_draft_files/figure-markdown_github/feat_sel-1.png)
-
 Maybe we calculate partial depedency
 
-``` r
+```{r partial_plot, message = FALSE, warning = FALSE}
 fit.reg = train("regr.bst", data.task)
 pd.regr = generatePartialDependenceData(fit.reg, data.task)
 plotPartialDependence(pd.regr)
 ```
 
-![](tutorial_draft_files/figure-markdown_github/partial_plot-1.png)
+
+
