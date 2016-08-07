@@ -63,14 +63,15 @@ generateHyperParsEffectData(res, trafo = T, include.diagnostics = F)
     ## Measures: acc.test.mean,mmce.test.mean
     ## Optimizer: TuneControlRandom
     ## Nested CV Used: FALSE
+    ## [1] "Partial dependence generated"
     ## Snapshot of $data:
-    ##            C acc.test.mean mmce.test.mean iteration exec.time
-    ## 1 12.2957110     0.7395833      0.2604167         1     0.052
-    ## 2  0.0758711     0.6666667      0.3333333         2     0.036
-    ## 3  2.2934909     0.7526042      0.2473958         3     0.036
-    ## 4  0.3146606     0.7500000      0.2500000         4     0.036
-    ## 5 15.8976559     0.7513021      0.2486979         5     0.039
-    ## 6  2.1371078     0.7539062      0.2460938         6     0.038
+    ##           C acc.test.mean mmce.test.mean iteration exec.time
+    ## 1  6.275722     0.7565104      0.2434896         1     0.050
+    ## 2  7.927461     0.7513021      0.2486979         2     0.039
+    ## 3 19.795971     0.7187500      0.2812500         3     0.044
+    ## 4  4.160300     0.7630208      0.2369792         4     0.039
+    ## 5 12.444617     0.7343750      0.2656250         5     0.041
+    ## 6  1.636330     0.7656250      0.2343750         6     0.038
 
 In the example below, we perform grid search on the C parameter for SVM on the famous Pima Indians dataset using nested cross validation. We generate the hyperparameter effect data so that the C parameter is on the untransformed scale and we do not include diagnostic data. As you can see below, nested cross validation is supported without any extra work by the user, allowing the user to obtain an unbiased estimator for the performance.
 
@@ -92,14 +93,15 @@ generateHyperParsEffectData(res)
     ## Measures: acc.test.mean,mmce.test.mean
     ## Optimizer: TuneControlGrid
     ## Nested CV Used: TRUE
+    ## [1] "Partial dependence generated"
     ## Snapshot of $data:
     ##            C acc.test.mean mmce.test.mean iteration exec.time
-    ## 1 -5.0000000     0.6250000      0.3750000         1     0.026
-    ## 2 -3.8888889     0.6250000      0.3750000         2     0.027
-    ## 3 -2.7777778     0.6692708      0.3307292         3     0.025
-    ## 4 -1.6666667     0.7447917      0.2552083         4     0.026
-    ## 5 -0.5555556     0.7526042      0.2473958         5     0.025
-    ## 6  0.5555556     0.7421875      0.2578125         6     0.024
+    ## 1 -5.0000000     0.6458333      0.3541667         1     0.026
+    ## 2 -3.8888889     0.6458333      0.3541667         2     0.026
+    ## 3 -2.7777778     0.6770833      0.3229167         3     0.025
+    ## 4 -1.6666667     0.7239583      0.2760417         4     0.026
+    ## 5 -0.5555556     0.7578125      0.2421875         5     0.026
+    ## 6  0.5555556     0.7395833      0.2604167         6     0.026
     ##   nested_cv_run
     ## 1             1
     ## 2             1
@@ -295,42 +297,64 @@ Visualizing the effect of more than 2 hyperparameters
 
 In the case of 2+ hyperparameters, the researcher may want to understand the relative importance of each hyperparameter or how each hyperparameter contributes to performance. By converting the hyperparameter effects data to a regression task, we can compute partial dependency and relative importance!
 
-In the example below, we tune SVM with poly kernel and 3 hyperparameters: C, offset, degree.
+In the example below, we tune SVM with bessel kernel and 3 hyperparameters: C, sigma, degree.
 
 ``` r
 ps = makeParamSet(
   makeNumericParam("C", lower = -5, upper = 5, trafo = function(x) 2^x),
-  makeNumericParam("sigma", lower = -5, upper = 5, trafo = function(x) 2^x))
+  makeNumericParam("sigma", lower = -5, upper = 5, trafo = function(x) 2^x),
+  makeDiscreteParam("degree", values = 2:5))
 ctrl = makeTuneControlRandom(maxit = 300L)
 rdesc = makeResampleDesc("Holdout")
-learn = makeLearner("classif.ksvm", par.vals = list(kernel = "rbfdot"))
+learn = makeLearner("classif.ksvm", par.vals = list(kernel = "besseldot"))
 res = tuneParams(learn, task = pid.task, control = ctrl, measures = acc,
                  resampling = rdesc, par.set = ps, show.info = F)
-data = generateHyperParsEffectData(res)
+generateHyperParsEffectData(res)
 ```
 
-Now that we've generated the data, we convert to a regression task.
+    ## HyperParsEffectData:
+    ## Hyperparameters: C,sigma,degree
+    ## Measures: acc.test.mean
+    ## Optimizer: TuneControlRandom
+    ## Nested CV Used: FALSE
+    ## [1] "Partial dependence generated"
+    ## Snapshot of $data:
+    ##            C      sigma degree acc.test.mean iteration exec.time
+    ## 1  2.5676296  2.2397856      2     0.6523438         1     0.141
+    ## 2 -0.4410627 -0.4767048      3     0.7734375         2     0.077
+    ## 3  0.9511055 -3.6479551      3     0.7617188         3     0.050
+    ## 4 -0.3590170 -2.6869227      2     0.7656250         4     0.049
+    ## 5 -0.5862703  0.9642845      5     0.6562500         5     0.134
+    ## 6 -1.2711677 -2.6709911      5     0.7695312         6     0.054
+
+Now that we've generated the data, we can create the partial dependency using the `partial.dep` arg:
 
 ``` r
-data.task = data$data[, c(data$hyperparams, data$measures)]
-data.task = makeRegrTask(id = "more_2", data = data.task, target = data$measures[1])
+data = generateHyperParsEffectData(res, partial.dep = TRUE)
 ```
 
-Now that we have a regression task, we can compute feature importance with information gain and chi squared!
+Now that we have a partial dependency, we can isolate the partial dep of the `C` hyperparameter:
 
 ``` r
-fv2 = generateFilterValuesData(data.task, method = c("information.gain", "chi.squared"))
-plotFilterValues(fv2)
+plotHyperParsEffect(data, x = "C", y = "acc.test.mean", plot.type = "line")
 ```
 
-![](tutorial_draft_files/figure-markdown_github/feat_sel-1.png)
+![](tutorial_draft_files/figure-markdown_github/c_partial-1.png)
 
-Maybe we calculate partial depedency
+We can also look at bivariate relationships using heatmap or contour:
 
 ``` r
-fit.reg = train("regr.bst", data.task)
-pd.regr = generatePartialDependenceData(fit.reg, data.task)
-plotPartialDependence(pd.regr)
+plotHyperParsEffect(data, x = "degree", y = "sigma", z = "acc.test.mean", 
+  plot.type = "heatmap")
 ```
 
-![](tutorial_draft_files/figure-markdown_github/partial_plot-1.png)
+![](tutorial_draft_files/figure-markdown_github/bivariate_heat-1.png)
+
+Or a colored scatter:
+
+``` r
+plotHyperParsEffect(data, x = "C", y = "acc.test.mean", z = "degree", 
+  plot.type = "scatter")
+```
+
+![](tutorial_draft_files/figure-markdown_github/bi_scatter-1.png)

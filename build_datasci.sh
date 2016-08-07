@@ -13,6 +13,7 @@ sudo apt-get update
 sudo apt-get -y install r-base r-base-dev
 sudo apt-get -y install libcurl4-gnutls-dev libxml2-dev libssl-dev
 sudo apt-get -y install openjdk-7-jdk
+sudo apt-get -y install r-cran-rgl libcairo-dev
 export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-i386
 export LD_LIBRARY_PATH=$JAVA_HOME/jre/lib/i386:$JAVA_HOME/jre/lib/i386/client
 sudo R CMD javareconf
