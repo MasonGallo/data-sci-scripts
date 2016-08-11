@@ -51,7 +51,7 @@ ps = makeParamSet(
   makeNumericParam("C", lower = -5, upper = 5, trafo = function(x) 2^x)
 )
 ctrl = makeTuneControlRandom(maxit = 100L)
-rdesc = makeResampleDesc("CV", iters = 2L)
+rdesc = makeResampleDesc("Holdout")
 res = tuneParams("classif.ksvm", task = pid.task, control = ctrl, 
            measures = list(acc, mmce), resampling = rdesc, par.set = ps, 
            show.info = F)
@@ -65,13 +65,13 @@ generateHyperParsEffectData(res, trafo = T, include.diagnostics = F)
     ## Nested CV Used: FALSE
     ## [1] "Partial dependence generated"
     ## Snapshot of $data:
-    ##           C acc.test.mean mmce.test.mean iteration exec.time
-    ## 1  6.275722     0.7565104      0.2434896         1     0.050
-    ## 2  7.927461     0.7513021      0.2486979         2     0.039
-    ## 3 19.795971     0.7187500      0.2812500         3     0.044
-    ## 4  4.160300     0.7630208      0.2369792         4     0.039
-    ## 5 12.444617     0.7343750      0.2656250         5     0.041
-    ## 6  1.636330     0.7656250      0.2343750         6     0.038
+    ##            C acc.test.mean mmce.test.mean iteration exec.time
+    ## 1 0.12832648     0.7148438      0.2851562         1     0.034
+    ## 2 1.09789944     0.7070312      0.2929688         2     0.022
+    ## 3 0.05462957     0.6562500      0.3437500         3     0.023
+    ## 4 2.71591622     0.7070312      0.2929688         4     0.024
+    ## 5 0.73231680     0.7187500      0.2812500         5     0.021
+    ## 6 1.81359088     0.7070312      0.2929688         6     0.022
 
 In the example below, we perform grid search on the C parameter for SVM on the famous Pima Indians dataset using nested cross validation. We generate the hyperparameter effect data so that the C parameter is on the untransformed scale and we do not include diagnostic data. As you can see below, nested cross validation is supported without any extra work by the user, allowing the user to obtain an unbiased estimator for the performance.
 
@@ -80,7 +80,7 @@ ps = makeParamSet(
   makeNumericParam("C", lower = -5, upper = 5, trafo = function(x) 2^x)
 )
 ctrl = makeTuneControlGrid()
-rdesc = makeResampleDesc("CV", iters = 2L)
+rdesc = makeResampleDesc("Holdout")
 lrn = makeTuneWrapper("classif.ksvm", control = ctrl, 
            measures = list(acc, mmce), resampling = rdesc, par.set = ps, 
            show.info = F)
@@ -96,12 +96,12 @@ generateHyperParsEffectData(res)
     ## [1] "Partial dependence generated"
     ## Snapshot of $data:
     ##            C acc.test.mean mmce.test.mean iteration exec.time
-    ## 1 -5.0000000     0.6458333      0.3541667         1     0.026
-    ## 2 -3.8888889     0.6458333      0.3541667         2     0.026
-    ## 3 -2.7777778     0.6770833      0.3229167         3     0.025
-    ## 4 -1.6666667     0.7239583      0.2760417         4     0.026
-    ## 5 -0.5555556     0.7578125      0.2421875         5     0.026
-    ## 6  0.5555556     0.7395833      0.2604167         6     0.026
+    ## 1 -5.0000000     0.6796875      0.3203125         1     0.016
+    ## 2 -3.8888889     0.6796875      0.3203125         2     0.015
+    ## 3 -2.7777778     0.7343750      0.2656250         3     0.016
+    ## 4 -1.6666667     0.7187500      0.2812500         4     0.015
+    ## 5 -0.5555556     0.7109375      0.2890625         5     0.015
+    ## 6  0.5555556     0.7812500      0.2187500         6     0.015
     ##   nested_cv_run
     ## 1             1
     ## 2             1
@@ -304,28 +304,36 @@ ps = makeParamSet(
   makeNumericParam("C", lower = -5, upper = 5, trafo = function(x) 2^x),
   makeNumericParam("sigma", lower = -5, upper = 5, trafo = function(x) 2^x),
   makeDiscreteParam("degree", values = 2:5))
-ctrl = makeTuneControlRandom(maxit = 300L)
-rdesc = makeResampleDesc("Holdout")
+ctrl = makeTuneControlRandom(maxit = 100L)
+rdesc = makeResampleDesc("Holdout", predict = "both")
 learn = makeLearner("classif.ksvm", par.vals = list(kernel = "besseldot"))
-res = tuneParams(learn, task = pid.task, control = ctrl, measures = acc,
+res = tuneParams(learn, task = pid.task, control = ctrl, 
+  measures = list(acc,setAggregation(acc, train.mean)),
                  resampling = rdesc, par.set = ps, show.info = F)
 generateHyperParsEffectData(res)
 ```
 
     ## HyperParsEffectData:
     ## Hyperparameters: C,sigma,degree
-    ## Measures: acc.test.mean
+    ## Measures: acc.test.mean,acc.train.mean
     ## Optimizer: TuneControlRandom
     ## Nested CV Used: FALSE
     ## [1] "Partial dependence generated"
     ## Snapshot of $data:
-    ##            C      sigma degree acc.test.mean iteration exec.time
-    ## 1  2.5676296  2.2397856      2     0.6523438         1     0.141
-    ## 2 -0.4410627 -0.4767048      3     0.7734375         2     0.077
-    ## 3  0.9511055 -3.6479551      3     0.7617188         3     0.050
-    ## 4 -0.3590170 -2.6869227      2     0.7656250         4     0.049
-    ## 5 -0.5862703  0.9642845      5     0.6562500         5     0.134
-    ## 6 -1.2711677 -2.6709911      5     0.7695312         6     0.054
+    ##            C      sigma degree acc.test.mean acc.train.mean iteration
+    ## 1 -4.1457644  1.8948733      2     0.6484375      0.6523438         1
+    ## 2 -3.5077354 -3.1114005      3     0.6484375      0.6523438         2
+    ## 3 -1.2817892 -3.7379709      4     0.6601562      0.6562500         3
+    ## 4 -2.8210494 -1.1010886      5     0.7500000      0.7792969         4
+    ## 5  1.1966207 -0.3294237      4     0.7265625      0.9179688         5
+    ## 6  0.2398466  1.0220886      4     0.6445312      0.9960938         6
+    ##   exec.time
+    ## 1     0.310
+    ## 2     0.123
+    ## 3     0.120
+    ## 4     0.153
+    ## 5     0.168
+    ## 6     0.291
 
 Now that we've generated the data, we can create the partial dependency using the `partial.dep` arg:
 
@@ -358,3 +366,27 @@ plotHyperParsEffect(data, x = "C", y = "acc.test.mean", z = "degree",
 ```
 
 ![](tutorial_draft_files/figure-markdown_github/bi_scatter-1.png)
+
+New features
+------------
+
+Provide an option so that we can see train/test on the same plot. This is harder to solve than it looks due to cases with nested CV and learner crashes. Naive implementation:
+
+``` r
+x = reshape2::melt(data$data,
+  id.vars = c(data$hyperparams, "iteration", "exec.time"),
+  variable.name = "measure", value.name = "performance")
+ggplot(x, aes(x=C, y=performance, color=measure)) + geom_line()
+```
+
+![](tutorial_draft_files/figure-markdown_github/train_test-1.png)
+
+Provide feature importance as a separate function:
+
+``` r
+# wrap this in a new function
+feat.imp = generateFilterValuesData(data$partial.data[[2]])
+plotFilterValues(feat.imp)
+```
+
+![](tutorial_draft_files/figure-markdown_github/feat_imp-1.png)
