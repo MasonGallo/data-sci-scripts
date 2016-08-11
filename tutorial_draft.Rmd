@@ -253,10 +253,11 @@ ps = makeParamSet(
   makeNumericParam("C", lower = -5, upper = 5, trafo = function(x) 2^x),
   makeNumericParam("sigma", lower = -5, upper = 5, trafo = function(x) 2^x),
   makeDiscreteParam("degree", values = 2:5))
-ctrl = makeTuneControlRandom(maxit = 300L)
-rdesc = makeResampleDesc("Holdout")
+ctrl = makeTuneControlRandom(maxit = 100L)
+rdesc = makeResampleDesc("Holdout", predict = "both")
 learn = makeLearner("classif.ksvm", par.vals = list(kernel = "besseldot"))
-res = tuneParams(learn, task = pid.task, control = ctrl, measures = acc,
+res = tuneParams(learn, task = pid.task, control = ctrl, 
+  measures = list(acc,setAggregation(acc, train.mean)),
                  resampling = rdesc, par.set = ps, show.info = F)
 generateHyperParsEffectData(res)
 ```
@@ -287,6 +288,26 @@ Or a colored scatter:
 ```{r bi_scatter, message = FALSE, warning = FALSE}
 plotHyperParsEffect(data, x = "C", y = "acc.test.mean", z = "degree", 
   plot.type = "scatter")
+```
+
+## New features
+
+Provide an option so that we can see train/test on the same plot. This is harder to 
+solve than it looks due to cases with nested CV and learner crashes. Naive implementation:
+
+```{r train_test, message = FALSE, warning = FALSE}
+x = melt(data$data,
+  id.vars = c(data$hyperparams, "iteration", "exec.time"),
+  variable.name = "measure", value.name = "performance")
+ggplot(x, aes(x=C, y=performance, color=measure)) + geom_line()
+```
+
+Provide feature importance as a separate function:
+
+```{r feat_imp, message = FALSE, warning = FALSE}
+# wrap this in a new function
+feat.imp = generateFilterValuesData(data$partial.data[[2]])
+plotFilterValues(feat.imp)
 ```
 
 
