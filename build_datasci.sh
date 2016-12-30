@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # setup git stuff
-sudo apt-get install -y git
 git config --global user.name "MasonGallo"
 git config --global user.email "MasonGallo@users.noreply.github.com"
+git config --global core.editor vim
 
 # setup R
 sudo sh -c 'echo "deb http://cran.rstudio.com/bin/linux/ubuntu xenial/" >> /etc/apt/sources.list'
@@ -23,3 +23,7 @@ echo -e "\nlocal({r <- getOption('repos')\nr['CRAN'] <- 'https://cran.rstudio.co
 sudo apt-get -y install gdebi-core
 wget -O /tmp/rstudio-server-latest-amd64.deb http://www.rstudio.org/download/latest/stable/server/ubuntu64/rstudio-server-latest-amd64.deb
 sudo gdebi -n /tmp/rstudio-server-latest-amd64.deb
+
+# get Python 2.7 from conda
+wget -O /tmp/conda-python.sh https://repo.continuum.io/archive/Anaconda2-4.2.0-MacOSX-x86_64.sh
+bash conda-python.sh
